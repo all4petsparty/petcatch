@@ -8,6 +8,7 @@ import CardReveal from "@/components/CardReveal";
 import BattleArena from "@/components/BattleArena";
 import Welcome from "@/components/Welcome";
 import Onboarding from "@/components/Onboarding";
+import GuestImport from "@/components/GuestImport";
 import MapView from "@/views/MapView";
 import CollectionView from "@/views/CollectionView";
 import CaptureView from "@/views/CaptureView";
@@ -69,6 +70,7 @@ export default function AppShell() {
       <BottomNav />
       <CardReveal />
       <BattleArena />
+      <GuestImport />
     </div>
   );
 }

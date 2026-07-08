@@ -90,6 +90,9 @@ interface AppState {
   setGuestMode: (v: boolean) => void;
   hasOnboarded: boolean;
   setHasOnboarded: (v: boolean) => void;
+  /** User id whose guest-catch import prompt has been handled (one-time). */
+  guestImportDoneFor: string | null;
+  setGuestImportDoneFor: (userId: string | null) => void;
 
   // Auth session (memory only — Supabase persists its own session)
   authUser: AuthUser | null;
@@ -151,6 +154,8 @@ export const useAppStore = create<AppState>()(
       setGuestMode: (guestMode) => set({ guestMode }),
       hasOnboarded: false,
       setHasOnboarded: (hasOnboarded) => set({ hasOnboarded }),
+      guestImportDoneFor: null,
+      setGuestImportDoneFor: (guestImportDoneFor) => set({ guestImportDoneFor }),
 
       authUser: null,
       setAuthUser: (authUser) => set({ authUser }),
@@ -218,6 +223,7 @@ export const useAppStore = create<AppState>()(
         consentAccepted: s.consentAccepted,
         guestMode: s.guestMode,
         hasOnboarded: s.hasOnboarded,
+        guestImportDoneFor: s.guestImportDoneFor,
         cans: s.cans,
         coins: s.coins,
         treats: s.treats,
