@@ -91,3 +91,9 @@ body {
     radial-gradient(ellipse 90% 60% at 15% 95%, rgba(79, 157, 47, 0.5), transparent 70%),
     linear-gradient(180deg, #bfe7fb 0%, #dff2fd 45%, #eef9e8 100%);
 }
+
+/* Hatch backdrops — cool / chill / mystical / fairytale */
+.hatch-bg-0 { background: linear-gradient(160deg,#2b1e5c 0%,#6b4bb8 45%,#b56bd6 100%); }
+.hatch-bg-1 { background: linear-gradient(165deg,#0f3b57 0%,#2a7f8f 55%,#7fd4c1 100%); }
+.hatch-bg-2 { background: linear-gradient(150deg,#ff9a8b 0%,#ff6a88 55%,#ff99ac 100%); }
+.hatch-bg-3 { background: linear-gradient(160deg,#134e2f 0%,#3c8d5a 55%,#a8e6a1 100%); }

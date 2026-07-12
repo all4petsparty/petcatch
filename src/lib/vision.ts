@@ -57,10 +57,10 @@ function trackProgress(p: any) {
 }
 
 /** WebGPU when the browser has it; a failed WebGPU init falls back to WASM. */
-async function makePipeline(task: string, model: string, extra: Record<string, unknown> = {}) {
+async function makePipeline(task: string, model: string, extra: Record<string, unknown> = {}, forceWasm = false) {
   const { pipeline } = await import("@huggingface/transformers");
   const base = { dtype: "q8", progress_callback: trackProgress, ...extra } as any;
-  if (typeof navigator !== "undefined" && (navigator as any).gpu) {
+  if (!forceWasm && typeof navigator !== "undefined" && (navigator as any).gpu) {
     try {
       return await pipeline(task as any, model, { ...base, device: "webgpu" });
     } catch {
@@ -79,10 +79,14 @@ async function getExtractor() {
   return extractorPromise;
 }
 async function getSegmenter() {
-  // RMBG-1.4 ships a bogus model_type; it's really an ISNet
-  segmenterPromise ??= makePipeline("background-removal", "briaai/RMBG-1.4", {
-    config: { model_type: "isnet" },
-  });
+  // RMBG-1.4 ships a bogus model_type; it's really an ISNet.
+  // WASM only: quantized RMBG on mobile WebGPU drivers can emit garbage
+  // mattes (streaky output), and this runs in the background anyway.
+  segmenterPromise ??= makePipeline(
+    "background-removal", "briaai/RMBG-1.4",
+    { config: { model_type: "isnet" } },
+    true
+  );
   return segmenterPromise;
 }
 
@@ -201,10 +205,32 @@ export async function segmentPet(dataUrl: string): Promise<string | null> {
     if (typeof raw.toCanvas === "function") {
       ctx.drawImage(raw.toCanvas(), 0, 0);
     } else {
+      // respect the source channel count — a stride mismatch here smears
+      // the whole image into diagonal streaks
+      const ch = raw.channels ?? 4;
       const pixels = ctx.createImageData(raw.width, raw.height);
-      pixels.data.set(raw.data);
+      const n = raw.width * raw.height;
+      for (let i = 0; i < n; i++) {
+        pixels.data[i * 4] = raw.data[i * ch];
+        pixels.data[i * 4 + 1] = raw.data[i * ch + (ch > 1 ? 1 : 0)];
+        pixels.data[i * 4 + 2] = raw.data[i * ch + (ch > 2 ? 2 : 0)];
+        pixels.data[i * 4 + 3] = ch === 4 ? raw.data[i * 4 + 3] : 255;
+      }
       ctx.putImageData(pixels, 0, 0);
     }
+
+    // Sanity check: a healthy matte has real foreground AND background.
+    // Degenerate output (all-opaque, all-clear) → keep the original photo.
+    const probe = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let opaque = 0;
+    const total = canvas.width * canvas.height;
+    for (let i = 3; i < probe.length; i += 4) if (probe[i] > 32) opaque++;
+    const ratio = opaque / total;
+    if (ratio < 0.02 || ratio > 0.98) {
+      console.warn("[petcatch] cutout looked degenerate, keeping photo (fg ratio:", ratio.toFixed(2) + ")");
+      return null;
+    }
+
     const trimmed = trimTransparent(canvas);
     const webp = trimmed.toDataURL("image/webp", 0.82);
     return webp.startsWith("data:image/webp") ? webp : trimmed.toDataURL("image/png");

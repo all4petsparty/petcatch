@@ -28,6 +28,10 @@ export interface PetCard {
   signatures?: number[][];
   /** Transparent sticker cutout (on-device background removal) */
   cutoutUrl?: string | null;
+  /** false while the card is still "hatching" (background processing) */
+  hatched?: boolean;
+  /** index of the mystical backdrop revealed at hatch */
+  backdrop?: number;
   createdAt: string;
 }
 
@@ -49,10 +53,9 @@ export type CaptureOutcomeState =
  */
 export interface CaptureFlow {
   photoUrl: string;
-  species: Species;
-  cutoutUrl: string | null;
-  outcome: CaptureOutcomeState;
-  failed?: boolean;
+  status: "brewing" | "carded" | "rejected";
+  reason?: string;
+  card?: PetCard;
 }
 
 /** A champion drawn for a Steal War (own card or the rival's snapshot). */

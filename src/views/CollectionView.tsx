@@ -47,17 +47,26 @@ export default function CollectionView() {
               className="tappable flex flex-col items-center"
               style={{ transform: `rotate(${i % 2 === 0 ? -1.5 : 1.5}deg)` }}
             >
-              <span className="relative flex h-36 w-full items-end justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={card.cutoutUrl ?? card.imageUrl}
-                  alt={card.customName}
-                  className={
-                    card.cutoutUrl
-                      ? "sticker max-h-36 max-w-full object-contain"
-                      : "h-36 w-full rounded-2xl border-4 border-white object-cover shadow-md"
-                  }
-                />
+              <span className={`relative flex h-36 w-full items-end justify-center overflow-hidden ${
+                card.hatched !== false && card.cutoutUrl ? `rounded-2xl hatch-bg-${card.backdrop ?? 0} shadow-md` : ""
+              }`}>
+                {card.hatched === false ? (
+                  <span className="flex h-full w-full animate-pulse flex-col items-center justify-center gap-1 rounded-2xl bg-sunny/30">
+                    <span className="animate-bob text-5xl">🥚</span>
+                    <span className="text-[10px] font-extrabold text-ink/50">Hatching…</span>
+                  </span>
+                ) : (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={card.cutoutUrl ?? card.imageUrl}
+                    alt={card.customName}
+                    className={
+                      card.cutoutUrl
+                        ? "sticker max-h-32 max-w-full object-contain"
+                        : "h-36 w-full rounded-2xl border-4 border-white object-cover shadow-md"
+                    }
+                  />
+                )}
                 <span className="absolute -left-1 -top-1 text-lg">{SPECIES_EMOJI[card.species]}</span>
                 {card.level > 1 && (
                   <span className="absolute -right-1 -top-1 rounded-full bg-sky px-2 py-0.5 text-[10px] font-extrabold text-white shadow">

@@ -39,8 +39,10 @@ export function randomStats(): PetCard["stats"] {
  * Local rarity roll (offline/demo mode). When Supabase is connected the
  * server's compute_rarity() uses real community breed frequency instead.
  */
-export function rollRarity(): Rarity {
+export function rollRarity(collectionSize = Infinity): Rarity {
   const roll = Math.random() * 100;
+  // top tiers only hatch for seasoned collectors (10+ pets)
+  if (roll < 7 && collectionSize < 10) return "epic";
   if (roll < 2) return "mythic";
   if (roll < 7) return "legendary";
   if (roll < 17) return "epic";

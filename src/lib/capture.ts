@@ -193,3 +193,98 @@ function submitLocally(
   awardCatchEconomy(true);
   return { outcome: "new_discovery", card, xp };
 }
+
+// ---------------------------------------------------------------------------
+// Fast-capture flow: card first, processing later ("hatching")
+// ---------------------------------------------------------------------------
+import { rollRarity as rollRarityGated, sillyName as makeName, randomStats as makeStats } from "@/lib/cardFactory";
+import { segmentPet, embedSignature } from "@/lib/vision";
+
+/** Mint the instant (unhatched) card shown right after the treat lands. */
+export function startCapture(photoUrl: string, species: Species, breed: string | null): PetCard {
+  const store = useAppStore.getState();
+  const card: PetCard = {
+    id: crypto.randomUUID(),
+    serialNumber: store.collection.reduce((m, c) => Math.max(m, c.serialNumber), 0) + 1,
+    customName: makeName(species),
+    species,
+    breed,
+    rarity: rollRarityGated(store.collection.length), // hidden until hatch
+    imageUrl: photoUrl,
+    lat: store.position?.lat ?? null,
+    lng: store.position?.lng ?? null,
+    venueName: store.checkedInVenue?.name ?? null,
+    level: 1,
+    candy: 1,
+    stats: makeStats(),
+    hatched: false,
+    backdrop: Math.floor(Math.random() * 4),
+    createdAt: new Date().toISOString(),
+  };
+  store.addCard(card);
+  store.addXp(100);
+  awardCatchEconomy(true);
+  return card;
+}
+
+/**
+ * Background hatching: cutout → signature → dedupe → reveal. If the pet is
+ * already in the PetDex, the egg merges into the existing card as a level-up.
+ */
+export async function finalizeCapture(card: PetCard): Promise<void> {
+  const store = useAppStore.getState();
+  try {
+    const cutoutUrl = await segmentPet(card.imageUrl);
+    const signature = await embedSignature(cutoutUrl ?? card.imageUrl);
+
+    // species-gated dedupe against everything except this egg
+    let bestId: string | null = null;
+    let bestSim = 0;
+    for (const c of store.collection) {
+      if (c.id === card.id || c.species !== card.species) continue;
+      for (const view of [c.signature, ...(c.signatures ?? [])]) {
+        if (!view || view.length !== signature.length) continue;
+        const sim = cosineSimilarity(signature, view);
+        if (sim > bestSim) { bestSim = sim; bestId = c.id; }
+      }
+    }
+
+    if (bestId && bestSim >= 0.8) {
+      const existing = store.collection.find((c) => c.id === bestId)!;
+      store.removeCard(card.id);
+      const views = existing.signatures ?? [];
+      store.updateCard(bestId, {
+        level: existing.level + 1,
+        candy: existing.candy + 3,
+        signatures: bestSim < 0.93 && views.length < 3 ? [...views, signature] : views,
+      });
+      return;
+    }
+
+    store.updateCard(card.id, { cutoutUrl, signature, hatched: true });
+
+    // sync to Supabase when signed in (server re-checks uniqueness)
+    const { getSupabase } = await import("@/lib/supabase");
+    const supabase = getSupabase();
+    const { data: s } = await supabase.auth.getSession();
+    const uid = s.session?.user.id;
+    if (!uid) return;
+    const blob = await (await fetch(card.imageUrl)).blob();
+    const path = `${uid}/${Date.now()}.jpg`;
+    const { error: upErr } = await supabase.storage.from("pet-photos").upload(path, blob, { contentType: "image/jpeg" });
+    if (upErr) return;
+    const url = supabase.storage.from("pet-photos").getPublicUrl(path).data.publicUrl;
+    const { data } = await supabase.rpc("capture_pet", {
+      p_signature: signature, p_species: card.species, p_breed: card.breed,
+      p_custom_name: card.customName, p_image_url: url,
+      p_lat: card.lat, p_lng: card.lng,
+      p_venue_id: store.checkedInVenue?.id ?? null, p_stats: card.stats,
+    });
+    if (data?.outcome === "new_discovery") {
+      store.updateCard(card.id, { id: data.card_id, serialNumber: data.serial_number, rarity: data.rarity });
+    }
+  } catch (err) {
+    console.warn("[petcatch] hatch failed, card keeps its photo:", err);
+    store.updateCard(card.id, { hatched: true });
+  }
+}
