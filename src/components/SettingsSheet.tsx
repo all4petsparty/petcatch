@@ -4,12 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAppStore } from "@/lib/store";
 import { signOut, deleteAccount } from "@/lib/auth";
+import { loadSamplePetDex } from "@/lib/samplePets";
 
 /** Settings (CatchCat-style hub): account, notifications, legal, sign out, deletion. */
 export default function SettingsSheet({ onClose }: { onClose: () => void }) {
   const authUser = useAppStore((s) => s.authUser);
   const setGuestMode = useAppStore((s) => s.setGuestMode);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [sampleConfirm, setSampleConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -61,6 +63,27 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
           <a href="mailto:all4petspawty@gmail.com?subject=PetCatch%20feedback" className={row}>
             💬 Feedback &amp; support <span className="ml-auto text-ink/30">›</span>
           </a>
+        </div>
+
+        <p className="mb-2 mt-5 text-xs font-extrabold uppercase tracking-widest text-tangerine-deep">Demo</p>
+        <div className="flex flex-col gap-2.5">
+          {sampleConfirm ? (
+            <button
+              type="button"
+              onClick={() => { loadSamplePetDex(); setNote("Sample PetDex loaded! 🎉 Check the PetDex tab."); setSampleConfirm(false); }}
+              className="tappable w-full rounded-2xl bg-grass px-4 py-4 font-extrabold text-white shadow-sm"
+            >
+              Replace my cards with 8 sample pets — tap to confirm
+            </button>
+          ) : (
+            <button type="button" onClick={() => setSampleConfirm(true)} className={row}>
+              🎨 Load sample PetDex <span className="ml-auto text-ink/30">›</span>
+            </button>
+          )}
+          <p className="px-1 text-[11px] text-ink/40">
+            Replaces your current cards with a fictional showcase set so you can see how a full
+            collection looks. Re-catch real pets anytime to rebuild your PetDex.
+          </p>
         </div>
 
         <p className="mb-2 mt-5 text-xs font-extrabold uppercase tracking-widest text-tangerine-deep">Session</p>
