@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Portal from "@/components/Portal";
 
 /**
  * Rewarded ad placement (T&C §3 / Privacy §4: Google AdMob rewarded units
@@ -28,6 +29,7 @@ export default function RewardedAd({
   }, [secondsLeft, done]);
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink/80 p-6 backdrop-blur-sm">
       <div className="animate-pop-in flex w-full max-w-sm flex-col items-center gap-4 rounded-card bg-white p-6 text-center shadow-2xl">
         <span className="text-xs font-extrabold uppercase tracking-widest text-ink/40">
@@ -56,5 +58,6 @@ export default function RewardedAd({
         </button>
       </div>
     </div>
+    </Portal>
   );
 }

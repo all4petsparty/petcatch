@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAppStore } from "@/lib/store";
 import { signOut, deleteAccount } from "@/lib/auth";
 import { loadSamplePetDex } from "@/lib/samplePets";
+import Portal from "@/components/Portal";
 
 /** Settings (CatchCat-style hub): account, notifications, legal, sign out, deletion. */
 export default function SettingsSheet({ onClose }: { onClose: () => void }) {
@@ -41,6 +42,7 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
   const row = "tappable flex w-full items-center gap-3 rounded-2xl bg-cream px-4 py-4 font-extrabold shadow-sm";
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[75] flex items-end justify-center bg-ink/50 backdrop-blur-sm" onClick={onClose}>
       <div
         className="animate-pop-in max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-t-card bg-white p-5 pb-10 shadow-2xl"
@@ -118,5 +120,6 @@ export default function SettingsSheet({ onClose }: { onClose: () => void }) {
         <p className="mt-6 text-center text-xs text-ink/30">PetCatch by All4Pets · Pasig City, PH</p>
       </div>
     </div>
+    </Portal>
   );
 }
