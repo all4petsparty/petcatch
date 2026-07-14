@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { SPECIES_EMOJI } from "@/components/icons";
+import { formatDuration } from "@/lib/economy";
 
 const REJECT_TEXT: Record<string, string> = {
   screen_detected: "That looks like a screen — PetDexter only counts real-life friends! 📺",
@@ -34,8 +35,10 @@ function Sparkles({ count = 10 }: { count?: number }) {
 
 /**
  * Fast capture reveal: 2s brew → collector card with the photo, name, and
- * stats (rarity hidden — it's revealed later when the card "hatches" in
- * the PetDex after background processing).
+ * stats. Rewards are shown only once the background hatch resolves the
+ * REAL outcome (new discovery vs. revisit vs. too-soon-to-reward-again) —
+ * never guessed upfront, so a revisit can't display (or pay out) as if it
+ * were a fresh discovery.
  */
 export default function CardReveal() {
   const flow = useAppStore((s) => s.captureFlow);
@@ -74,6 +77,8 @@ export default function CardReveal() {
   }
 
   const card = flow.card!;
+  const r = flow.resolution;
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-ink/80 p-5 backdrop-blur-md">
       <div className="animate-pop-in w-full max-w-sm">
@@ -98,12 +103,38 @@ export default function CardReveal() {
                 <span className="rounded-full bg-white px-3 py-1">💛 {card.stats.friendliness}</span>
                 <span className="rounded-full bg-white px-3 py-1">⚡ {card.stats.energy}</span>
               </div>
-              <span className="mx-auto rounded-full bg-sunny px-4 py-1 text-sm font-extrabold text-ink">
-                XP +100 · 🍬 +1
-              </span>
-              <p className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-ink/60">
-                🥚 Rarity: hatching… Return to your PetDex to see what your pet has hatched into!
-              </p>
+
+              {!r && (
+                <span className="mx-auto animate-pulse rounded-full bg-sunny/60 px-4 py-1 text-sm font-extrabold text-ink">
+                  Calculating reward…
+                </span>
+              )}
+              {r?.kind === "new" && (
+                <span className="mx-auto rounded-full bg-sunny px-4 py-1 text-sm font-extrabold text-ink">
+                  ✨ New discovery! XP +{r.xp} · 🪙 +{r.coins} · 🍪 +{r.treats}
+                </span>
+              )}
+              {r?.kind === "revisit" && (
+                <span className="mx-auto rounded-full bg-sky/40 px-4 py-1 text-sm font-extrabold text-ink">
+                  🍬 You've met before! Lv.{r.level} · XP +{r.xp} · 🪙 +{r.coins}
+                </span>
+              )}
+              {r?.kind === "revisit_cooldown" && (
+                <span className="mx-auto rounded-full bg-ink/10 px-4 py-1 text-center text-sm font-extrabold text-ink/60">
+                  👋 Already found recently — come back in {formatDuration(r.cooldownRemainingMs)} for a level-up!
+                </span>
+              )}
+              {r?.kind === "error" && (
+                <span className="mx-auto rounded-full bg-ink/10 px-4 py-1 text-sm font-extrabold text-ink/60">
+                  Saved! (couldn't confirm the reward, but your card is safe)
+                </span>
+              )}
+
+              {(!r || r.kind === "new") && (
+                <p className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-ink/60">
+                  🥚 Rarity: hatching… Return to your PetDex to see what your pet has hatched into!
+                </p>
+              )}
             </div>
           </div>
         </div>

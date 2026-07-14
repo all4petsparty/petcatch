@@ -1,5 +1,6 @@
 import { useAppStore, type Species, type PetCard } from "@/lib/store";
 import { todayKey } from "@/lib/economy";
+import { statCap } from "@/lib/evolution";
 
 /**
  * Brand food catalog (Phase 1 of the boost economy). Feeding the right
@@ -66,13 +67,16 @@ export interface FeedResult {
   matchType: MatchType;
   gains: { chonkiness: number; friendliness: number; energy: number };
   totalGain: number;
+  /** stat points that would have overflowed the cap, converted to candy instead */
+  overflowCandy: number;
 }
 
 /** Flavor text for the feed reaction toast. */
 export function reactionText(name: string, r: FeedResult): string {
-  if (r.matchType === "match") return `${name} loved the ${r.item.name}! 😻 +${r.totalGain} stats`;
-  if (r.matchType === "generic") return `${name} munched the ${r.item.name} happily. 🙂 +${r.totalGain} stats`;
-  return `${name} sniffed the ${r.item.name} and wandered off... 🙄 +${r.totalGain} stats`;
+  const overflow = r.overflowCandy > 0 ? ` (stats maxed — +${r.overflowCandy} 🍬 instead!)` : "";
+  if (r.matchType === "match") return `${name} loved the ${r.item.name}! 😻 +${r.totalGain} stats${overflow}`;
+  if (r.matchType === "generic") return `${name} munched the ${r.item.name} happily. 🙂 +${r.totalGain} stats${overflow}`;
+  return `${name} sniffed the ${r.item.name} and wandered off... 🙄 +${r.totalGain} stats${overflow}`;
 }
 
 function distribute(total: number, weights: [number, number, number]) {
@@ -121,7 +125,11 @@ export function grantStarterFoodIfNeeded() {
 
 /**
  * Feed a food item to a caught pet. Applies the species-matched boost,
- * distributed across stats per the food's flavor, clamped at 100 each.
+ * distributed across stats per the food's flavor, clamped at the pet's
+ * current ascension cap (see evolution.ts). Any amount that would have
+ * overflowed the cap converts 1:1 into the pet's own candy instead of
+ * being wasted — so feeding a maxed-out pet still always pays off, and
+ * that candy is exactly what funds its next Evolution.
  */
 export function feedPet(cardId: string, foodId: string): FeedResult | null {
   const store = useAppStore.getState();
@@ -130,20 +138,29 @@ export function feedPet(cardId: string, foodId: string): FeedResult | null {
   const owned = store.foodInventory[foodId] ?? 0;
   if (!item || !card || owned <= 0) return null;
 
+  const cap = statCap(card.starRank ?? 0);
   const matchType = matchTypeFor(item, card.species);
   const rawGains = distribute(Math.round(item.boost * MULTIPLIER[matchType]), item.weights);
   const stats: PetCard["stats"] = { ...card.stats };
   const gains = { chonkiness: 0, friendliness: 0, energy: 0 };
+  let overflowCandy = 0;
   (Object.keys(rawGains) as (keyof typeof rawGains)[]).forEach((k) => {
-    const capped = Math.max(0, Math.min(100 - stats[k], rawGains[k]));
-    gains[k] = capped;
-    stats[k] += capped;
+    const room = Math.max(0, cap - stats[k]);
+    const applied = Math.min(room, rawGains[k]);
+    gains[k] = applied;
+    stats[k] += applied;
+    overflowCandy += rawGains[k] - applied;
   });
   const totalGain = gains.chonkiness + gains.friendliness + gains.energy;
 
   store.addFood(foodId, -1);
-  store.updateCard(cardId, { stats, feedCount: (card.feedCount ?? 0) + 1, lastFedBrand: item.brand });
+  store.updateCard(cardId, {
+    stats,
+    feedCount: (card.feedCount ?? 0) + 1,
+    lastFedBrand: item.brand,
+    candy: card.candy + overflowCandy,
+  });
   store.addXp(matchType === "match" ? 15 : matchType === "generic" ? 8 : 3);
 
-  return { item, matchType, gains, totalGain };
+  return { item, matchType, gains, totalGain, overflowCandy };
 }

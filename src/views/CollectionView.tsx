@@ -67,6 +67,11 @@ function MiniCard({ card, index, onOpen }: { card: PetCard; index: number; onOpe
           {card.level > 1 && (
             <span className="absolute right-1.5 top-1.5 rounded-full bg-sky px-2 py-0.5 text-[10px] font-extrabold text-white shadow">Lv.{card.level}</span>
           )}
+          {!!card.starRank && (
+            <span className="absolute left-1.5 bottom-1.5 rounded-full bg-ink/70 px-1.5 py-0.5 text-[10px] font-extrabold text-sunny shadow">
+              {"⭐".repeat(card.starRank)}
+            </span>
+          )}
         </span>
         <span className="block px-2 pb-2 pt-1 text-center">
           <span className="font-script block truncate text-2xl font-bold leading-tight text-ink">{card.customName}</span>

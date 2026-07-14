@@ -6,6 +6,7 @@ import { useAppStore, type PetCard, type Rarity } from "@/lib/store";
 import { SPECIES_EMOJI } from "@/components/icons";
 import { battleStats, tribesFor, abilityFor } from "@/lib/cardFactory";
 import { FOOD_CATALOG, feedPet, matchTypeFor, reactionText } from "@/lib/food";
+import { MAX_STAR_RANK, statCap, evolveCost, isEvolutionReady, evolveCard } from "@/lib/evolution";
 import BoostStore from "@/components/BoostStore";
 
 const RARITY_FRAME: Record<Rarity, string> = {
@@ -77,6 +78,7 @@ export default function CardDetail({ card: cardProp, onClose }: { card: PetCard;
   const foodInventory = useAppStore((s) => s.foodInventory);
   const [reaction, setReaction] = useState<string | null>(null);
   const [showStore, setShowStore] = useState(false);
+  const [evolveNote, setEvolveNote] = useState<string | null>(null);
 
   const hatching = card.hatched === false;
   const bd = card.backdrop ?? (card.id.charCodeAt(0) + card.id.charCodeAt(3)) % 4;
@@ -87,6 +89,11 @@ export default function CardDetail({ card: cardProp, onClose }: { card: PetCard;
     year: "numeric", month: "short", day: "numeric",
   });
 
+  const starRank = card.starRank ?? 0;
+  const cap = statCap(starRank);
+  const nextCost = evolveCost(starRank);
+  const readyToEvolve = isEvolutionReady(card);
+
   const ownedFoods = FOOD_CATALOG.filter((f) => (foodInventory[f.id] ?? 0) > 0);
 
   function handleFeed(foodId: string) {
@@ -94,6 +101,13 @@ export default function CardDetail({ card: cardProp, onClose }: { card: PetCard;
     if (!result) return;
     setReaction(reactionText(card.customName, result));
     setTimeout(() => setReaction(null), 3200);
+  }
+
+  function handleEvolve() {
+    const result = evolveCard(card.id);
+    if (!result) return;
+    setEvolveNote(`${card.customName} ascended to ⭐×${result.newRank}! Stat cap is now ${statCap(result.newRank)}.`);
+    setTimeout(() => setEvolveNote(null), 3600);
   }
 
   // Portal to <body>: the active view <section> keeps a `transform` from the
@@ -129,6 +143,11 @@ export default function CardDetail({ card: cardProp, onClose }: { card: PetCard;
                 {card.level > 1 && (
                   <span className="absolute right-3 top-11 rounded-full bg-sky px-3 py-1 text-xs font-extrabold text-white shadow">
                     Lv.{card.level}
+                  </span>
+                )}
+                {starRank > 0 && (
+                  <span className="absolute left-3 bottom-3 rounded-full bg-ink/70 px-3 py-1 text-xs font-extrabold text-sunny shadow">
+                    {"⭐".repeat(starRank)} Ascended
                   </span>
                 )}
                 {hatching ? (
@@ -168,15 +187,15 @@ export default function CardDetail({ card: cardProp, onClose }: { card: PetCard;
                   )}
                 </div>
 
-                {/* Personality stats */}
+                {/* Personality stats — bars are relative to the current ascension cap */}
                 <div className="flex flex-col gap-1.5">
                   {STAT_META.map(({ key, label, bar }) => (
                     <div key={key} className="flex items-center gap-2 text-sm font-bold">
                       <span className="w-32 shrink-0">{label}</span>
                       <div className="h-3 flex-1 overflow-hidden rounded-full bg-cream">
-                        <div className={`h-full rounded-full ${bar} transition-all`} style={{ width: `${card.stats[key]}%` }} />
+                        <div className={`h-full rounded-full ${bar} transition-all`} style={{ width: `${Math.min(100, (card.stats[key] / cap) * 100)}%` }} />
                       </div>
-                      <span className="w-7 text-right text-xs text-ink/50">{card.stats[key]}</span>
+                      <span className="w-14 text-right text-xs text-ink/50">{card.stats[key]}/{cap}</span>
                     </div>
                   ))}
                 </div>
@@ -208,6 +227,43 @@ export default function CardDetail({ card: cardProp, onClose }: { card: PetCard;
                   <span className="rounded-full bg-sunny px-2.5 py-0.5 text-xs font-extrabold text-ink">{ability.keyword}</span>
                   <p className="mt-1.5 text-xs font-semibold leading-snug text-ink/70">{ability.text}</p>
                 </div>
+
+                {/* Evolution — the answer to "what happens once stats are maxed?" */}
+                {!hatching && (
+                  <div className="rounded-2xl border-2 border-dashed border-bubblegum/60 p-3">
+                    <p className="mb-1 text-xs font-extrabold uppercase tracking-widest text-bubblegum">
+                      ✨ Ascension
+                    </p>
+                    {nextCost === null ? (
+                      <p className="text-xs font-bold text-ink/60">
+                        {"⭐".repeat(MAX_STAR_RANK)} Fully ascended — max Power reached!
+                      </p>
+                    ) : readyToEvolve ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold text-ink/60">
+                          All stats maxed! Evolve to {"⭐".repeat(starRank + 1)} for +2 Power and a higher cap.
+                        </p>
+                        <button
+                          type="button"
+                          disabled={card.candy < nextCost}
+                          onClick={handleEvolve}
+                          className="tappable shrink-0 rounded-full bg-bubblegum px-3 py-2 text-xs font-extrabold text-white shadow-sm disabled:opacity-40"
+                        >
+                          Evolve · {nextCost}🍬
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-bold text-ink/50">
+                        Feed all 3 stats up to {cap} to unlock evolving for {nextCost} 🍬.
+                      </p>
+                    )}
+                    {evolveNote && (
+                      <p className="animate-pop-in mt-2 rounded-xl bg-bubblegum/15 px-3 py-2 text-center text-xs font-bold text-bubblegum">
+                        {evolveNote}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Feed panel */}
                 {!hatching && (

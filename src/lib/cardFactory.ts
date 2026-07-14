@@ -75,13 +75,14 @@ export function levelFromXp(xp: number): { level: number; intoLevel: number; per
   return { level: Math.floor(xp / perLevel) + 1, intoLevel: xp % perLevel, perLevel };
 }
 
-/** Battle cost/power à la the trading-card reference. */
-export function battleStats(card: Pick<PetCard, "rarity" | "stats">): { cost: number; power: number } {
+/** Battle cost/power à la the trading-card reference. Ascension (starRank) permanently adds Power. */
+export function battleStats(card: Pick<PetCard, "rarity" | "stats" | "starRank">): { cost: number; power: number } {
   const rarityIdx = RARITY_ORDER.indexOf(card.rarity);
   const avg = (card.stats.chonkiness + card.stats.friendliness + card.stats.energy) / 3;
+  const starRank = card.starRank ?? 0;
   return {
     cost: rarityIdx + 1, // 1 (common) … 6 (mythic)
-    power: 1 + Math.round((avg / 100) * 4) + Math.floor(rarityIdx * 0.8), // 1 … 9
+    power: 1 + Math.round((avg / 100) * 4) + Math.floor(rarityIdx * 0.8) + starRank * 2, // grows with rarity, stats, AND ascension
   };
 }
 

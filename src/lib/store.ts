@@ -36,6 +36,10 @@ export interface PetCard {
   feedCount?: number;
   /** brand of the most recent feed, shown as a "Powered by ___" badge */
   lastFedBrand?: string | null;
+  /** Ascension tier (0-3). Raises each stat's cap and adds Power. */
+  starRank?: number;
+  /** ISO timestamp of the last REWARDED revisit (gates the leveling cooldown) */
+  lastRevisitAt?: string;
   createdAt: string;
 }
 
@@ -45,21 +49,30 @@ export interface CheckedInVenue {
   distanceM: number;
 }
 
-export type CaptureOutcomeState =
-  | { outcome: "new_discovery"; card: PetCard; xp: number }
-  | { outcome: "revisit"; cardId: string; level: number; candy: number; xp: number }
-  | null;
+/**
+ * Reward outcome once the background hatch resolves — decoupled from the
+ * instant card reveal so a revisit can never be mistaken for (or pay out
+ * like) a brand-new discovery. `revisit_cooldown` means the pet WAS
+ * recognized (no duplicate card was minted) but it's too soon since the
+ * last rewarded revisit for this specific pet to pay out again.
+ */
+export type CaptureResolution =
+  | { kind: "new"; xp: number; coins: number; treats: number }
+  | { kind: "revisit"; xp: number; coins: number; level: number }
+  | { kind: "revisit_cooldown"; cooldownRemainingMs: number }
+  | { kind: "error" };
 
 /**
  * A capture in flight. Created the moment classification passes (fast), so
- * the catch minigame starts immediately; the cutout and the uniqueness
- * verdict stream in while the player plays.
+ * the catch minigame starts immediately; the cutout, uniqueness verdict,
+ * and reward resolution stream in while the player plays.
  */
 export interface CaptureFlow {
   photoUrl: string;
   status: "brewing" | "carded" | "rejected";
   reason?: string;
   card?: PetCard;
+  resolution?: CaptureResolution;
 }
 
 /** A champion drawn for a Steal War (own card or the rival's snapshot). */
