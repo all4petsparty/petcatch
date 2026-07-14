@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { MAX_CANS } from "@/lib/economy";
 import { preloadModels, onModelProgress } from "@/lib/vision";
+import { grantStarterFoodIfNeeded } from "@/lib/food";
 
 const SLIDES = [
   {
@@ -31,6 +32,12 @@ const SLIDES = [
     points: [`You carry up to ${MAX_CANS} cans`, "Cans recharge automatically over time", "Watch a rewarded ad for a bonus can"],
   },
   {
+    title: "Feed for a boost",
+    emoji: "🍖",
+    body: "The Boost Store sells branded pet food — feed the right brand to the right pet for the biggest stat boost.",
+    points: ["Dog food boosts dogs most, cat food boosts cats most", "Generic kibble works okay on anyone", "Earn food free by watching a short video, or buy it with treats"],
+  },
+  {
     title: "Explore & compete",
     emoji: "🗺️",
     body: "The community map shows sightings other players logged near you.",
@@ -45,6 +52,11 @@ export default function Onboarding() {
   const [aiProgress, setAiProgress] = useState(0);
   const slide = SLIDES[i];
   const last = i === SLIDES.length - 1;
+
+  function finish() {
+    grantStarterFoodIfNeeded();
+    setHasOnboarded(true);
+  }
 
   // The carousel doubles as the AI download screen — models arrive while
   // the player reads, so the first scan starts instantly
@@ -93,7 +105,7 @@ export default function Onboarding() {
         <div className="flex items-center justify-between gap-3 p-5 pt-3">
           <button
             type="button"
-            onClick={() => setHasOnboarded(true)}
+            onClick={finish}
             className="font-bold text-ink/40"
           >
             Skip
@@ -110,7 +122,7 @@ export default function Onboarding() {
             )}
             <button
               type="button"
-              onClick={() => (last ? setHasOnboarded(true) : setI(i + 1))}
+              onClick={() => (last ? finish() : setI(i + 1))}
               className="tappable rounded-full bg-tangerine px-6 py-3 font-extrabold text-white shadow-md"
             >
               {last ? "Let's catch! 🐾" : "Next ›"}

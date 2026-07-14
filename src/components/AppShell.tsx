@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { initAuth, handleAuthPopupReturn } from "@/lib/auth";
+import { grantStarterFoodIfNeeded } from "@/lib/food";
 import BottomNav from "@/components/BottomNav";
 import CardReveal from "@/components/CardReveal";
 import BattleArena from "@/components/BattleArena";
@@ -36,6 +37,11 @@ export default function AppShell() {
     handleAuthPopupReturn(); // OAuth popup closes itself after storing the session
     initAuth().finally(() => setReady(true));
   }, []);
+
+  // Retroactive grant for players who onboarded before the Boost Store shipped
+  useEffect(() => {
+    if (ready && hasOnboarded) grantStarterFoodIfNeeded();
+  }, [ready, hasOnboarded]);
 
   // Gate order: consent+sign-in → onboarding carousel → the game
   if (!ready) {

@@ -32,6 +32,10 @@ export interface PetCard {
   hatched?: boolean;
   /** index of the mystical backdrop revealed at hatch */
   backdrop?: number;
+  /** how many times this pet has been fed a branded boost */
+  feedCount?: number;
+  /** brand of the most recent feed, shown as a "Powered by ___" badge */
+  lastFedBrand?: string | null;
   createdAt: string;
 }
 
@@ -139,6 +143,14 @@ interface AppState {
   adCoinsDay: string | null;
   setAdCoinsDay: (day: string) => void;
 
+  // 🍖 Brand food inventory (Boost Store) — account-level, persisted
+  foodInventory: Record<string, number>;
+  addFood: (foodId: string, n: number) => void;
+  foodAdClaims: Record<string, string>;
+  setFoodAdClaim: (foodId: string, day: string) => void;
+  starterFoodGranted: boolean;
+  setStarterFoodGranted: (v: boolean) => void;
+
   // The capture currently in flight / being revealed
   captureFlow: CaptureFlow | null;
   setCaptureFlow: (flow: CaptureFlow | null) => void;
@@ -212,6 +224,20 @@ export const useAppStore = create<AppState>()(
       adCoinsDay: null,
       setAdCoinsDay: (adCoinsDay) => set({ adCoinsDay }),
 
+      foodInventory: {},
+      addFood: (foodId, n) =>
+        set((s) => ({
+          foodInventory: {
+            ...s.foodInventory,
+            [foodId]: Math.max(0, (s.foodInventory[foodId] ?? 0) + n),
+          },
+        })),
+      foodAdClaims: {},
+      setFoodAdClaim: (foodId, day) =>
+        set((s) => ({ foodAdClaims: { ...s.foodAdClaims, [foodId]: day } })),
+      starterFoodGranted: false,
+      setStarterFoodGranted: (starterFoodGranted) => set({ starterFoodGranted }),
+
       captureFlow: null,
       setCaptureFlow: (captureFlow) => set({ captureFlow }),
       patchCaptureFlow: (patch) =>
@@ -234,6 +260,9 @@ export const useAppStore = create<AppState>()(
         lastCatchDay: s.lastCatchDay,
         claimedAchievements: s.claimedAchievements,
         adCoinsDay: s.adCoinsDay,
+        foodInventory: s.foodInventory,
+        foodAdClaims: s.foodAdClaims,
+        starterFoodGranted: s.starterFoodGranted,
       }),
       // Rehydrated manually in AppShell after mount to avoid SSR mismatch
       skipHydration: true,

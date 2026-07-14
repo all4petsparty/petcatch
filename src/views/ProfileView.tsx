@@ -10,6 +10,8 @@ import {
 } from "@/lib/economy";
 import SettingsSheet from "@/components/SettingsSheet";
 import RewardedAd from "@/components/RewardedAd";
+import BoostStore from "@/components/BoostStore";
+import { FOOD_CATALOG } from "@/lib/food";
 
 const SPECIES_ORDER: Species[] = ["dog", "cat", "rabbit", "bird", "other"];
 const SPECIES_COLOR: Record<Species, string> = {
@@ -29,7 +31,9 @@ export default function ProfileView() {
   const authUser = useAppStore((s) => s.authUser);
   const cansState = useAppStore((s) => s.cans);
 
+  const foodInventory = useAppStore((s) => s.foodInventory);
   const [showSettings, setShowSettings] = useState(false);
+  const [showStore, setShowStore] = useState(false);
   const [ad, setAd] = useState<null | "can" | "coins">(null);
   const [, tick] = useState(0);
 
@@ -143,6 +147,22 @@ export default function ProfileView() {
             🍪 Treats <span>{treats}</span>
           </span>
         </div>
+
+        <div className="mt-3 flex items-center justify-between rounded-2xl bg-tangerine/10 px-4 py-3">
+          <span className="text-sm font-extrabold">
+            🍖 Pet food{" "}
+            <span className="text-ink/40">
+              ({FOOD_CATALOG.reduce((sum, f) => sum + (foodInventory[f.id] ?? 0), 0)} items)
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowStore(true)}
+            className="tappable rounded-full bg-tangerine px-4 py-2 text-xs font-extrabold text-white shadow-sm"
+          >
+            🏪 Boost Store
+          </button>
+        </div>
       </section>
 
       {/* Achievements */}
@@ -214,6 +234,7 @@ export default function ProfileView() {
       </section>
 
       {showSettings && <SettingsSheet onClose={() => setShowSettings(false)} />}
+      {showStore && <BoostStore onClose={() => setShowStore(false)} />}
       {ad && (
         <RewardedAd
           rewardLabel={ad === "can" ? "1 snack can" : `${AD_DAILY_COINS} coins`}

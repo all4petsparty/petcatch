@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { type PetCard, type Rarity } from "@/lib/store";
+import { useAppStore, type PetCard, type Rarity } from "@/lib/store";
 import { SPECIES_EMOJI } from "@/components/icons";
 import { battleStats, tribesFor, abilityFor } from "@/lib/cardFactory";
+import { FOOD_CATALOG, feedPet, matchTypeFor, reactionText } from "@/lib/food";
+import BoostStore from "@/components/BoostStore";
 
 const RARITY_FRAME: Record<Rarity, string> = {
   common: "from-ink/30 to-ink/10",
@@ -22,6 +24,17 @@ const RARITY_CHIP: Record<Rarity, string> = {
   epic: "bg-bubblegum/25 text-bubblegum",
   legendary: "bg-tangerine/25 text-tangerine-deep",
   mythic: "bg-sunny text-tangerine-deep",
+};
+
+const MATCH_BADGE: Record<string, string> = {
+  match: "bg-grass/20 text-grass-deep",
+  generic: "bg-ink/10 text-ink/50",
+  mismatch: "bg-tangerine/15 text-tangerine-deep",
+};
+const MATCH_LABEL: Record<string, string> = {
+  match: "Perfect match!",
+  generic: "Okay for anyone",
+  mismatch: "Not a fan…",
 };
 
 const STAT_META = [
@@ -58,7 +71,13 @@ function Sparkles({ count = 10 }: { count?: number }) {
 }
 
 /** Full-detail collector card — fills the screen, scrolls if the card is tall. */
-export default function CardDetail({ card, onClose }: { card: PetCard; onClose: () => void }) {
+export default function CardDetail({ card: cardProp, onClose }: { card: PetCard; onClose: () => void }) {
+  // Read the live card from the store so feeding updates reflect immediately
+  const card = useAppStore((s) => s.collection.find((c) => c.id === cardProp.id)) ?? cardProp;
+  const foodInventory = useAppStore((s) => s.foodInventory);
+  const [reaction, setReaction] = useState<string | null>(null);
+  const [showStore, setShowStore] = useState(false);
+
   const hatching = card.hatched === false;
   const bd = card.backdrop ?? (card.id.charCodeAt(0) + card.id.charCodeAt(3)) % 4;
   const { cost, power } = battleStats(card);
@@ -67,6 +86,15 @@ export default function CardDetail({ card, onClose }: { card: PetCard; onClose: 
   const caught = new Date(card.createdAt).toLocaleDateString(undefined, {
     year: "numeric", month: "short", day: "numeric",
   });
+
+  const ownedFoods = FOOD_CATALOG.filter((f) => (foodInventory[f.id] ?? 0) > 0);
+
+  function handleFeed(foodId: string) {
+    const result = feedPet(card.id, foodId);
+    if (!result) return;
+    setReaction(reactionText(card.customName, result));
+    setTimeout(() => setReaction(null), 3200);
+  }
 
   // Portal to <body>: the active view <section> keeps a `transform` from the
   // pop-in animation, which would otherwise trap this fixed overlay inside it.
@@ -133,6 +161,11 @@ export default function CardDetail({ card, onClose }: { card: PetCard; onClose: 
                       {hatching ? "hatching" : card.rarity}
                     </span>
                   </div>
+                  {!!card.feedCount && (
+                    <p className="mt-1 text-[11px] font-bold text-ink/40">
+                      🍖 Fed {card.feedCount}× · Powered by {card.lastFedBrand}
+                    </p>
+                  )}
                 </div>
 
                 {/* Personality stats */}
@@ -141,7 +174,7 @@ export default function CardDetail({ card, onClose }: { card: PetCard; onClose: 
                     <div key={key} className="flex items-center gap-2 text-sm font-bold">
                       <span className="w-32 shrink-0">{label}</span>
                       <div className="h-3 flex-1 overflow-hidden rounded-full bg-cream">
-                        <div className={`h-full rounded-full ${bar}`} style={{ width: `${card.stats[key]}%` }} />
+                        <div className={`h-full rounded-full ${bar} transition-all`} style={{ width: `${card.stats[key]}%` }} />
                       </div>
                       <span className="w-7 text-right text-xs text-ink/50">{card.stats[key]}</span>
                     </div>
@@ -176,6 +209,62 @@ export default function CardDetail({ card, onClose }: { card: PetCard; onClose: 
                   <p className="mt-1.5 text-xs font-semibold leading-snug text-ink/70">{ability.text}</p>
                 </div>
 
+                {/* Feed panel */}
+                {!hatching && (
+                  <div className="rounded-2xl border-2 border-dashed border-sunny/60 p-3">
+                    <p className="mb-2 text-xs font-extrabold uppercase tracking-widest text-tangerine-deep">
+                      🍖 Feed for a boost
+                    </p>
+                    {ownedFoods.length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowStore(true)}
+                        className="tappable w-full rounded-full bg-sunny px-4 py-2.5 text-sm font-extrabold text-ink shadow-sm"
+                      >
+                        🏪 Visit the Boost Store
+                      </button>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {ownedFoods.map((food) => {
+                          const owned = foodInventory[food.id] ?? 0;
+                          const match = matchTypeFor(food, card.species);
+                          return (
+                            <div key={food.id} className="flex items-center gap-2 rounded-xl bg-cream px-3 py-2">
+                              <span className="text-xl">{food.emoji}</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-extrabold">{food.name}</p>
+                                <span className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-extrabold ${MATCH_BADGE[match]}`}>
+                                  {MATCH_LABEL[match]}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-extrabold text-ink/40">×{owned}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleFeed(food.id)}
+                                className="tappable rounded-full bg-tangerine px-3 py-1.5 text-xs font-extrabold text-white shadow-sm"
+                              >
+                                Feed
+                              </button>
+                            </div>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => setShowStore(true)}
+                          className="text-center text-xs font-bold text-tangerine-deep underline"
+                        >
+                          Get more food →
+                        </button>
+                      </div>
+                    )}
+                    {reaction && (
+                      <p className="animate-pop-in mt-2 rounded-xl bg-sunny/40 px-3 py-2 text-center text-xs font-bold">
+                        {reaction}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <p className="text-center text-[11px] font-bold text-ink/35">Caught {caught}</p>
               </div>
             </div>
@@ -190,6 +279,8 @@ export default function CardDetail({ card, onClose }: { card: PetCard; onClose: 
           </button>
         </div>
       </div>
+
+      {showStore && <BoostStore onClose={() => setShowStore(false)} />}
     </div>,
     document.body
   );
