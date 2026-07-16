@@ -59,9 +59,14 @@ export default function Welcome() {
       return;
     }
     setBusy(true);
-    const { error } = await signInWithEmail(email);
-    setBusy(false);
-    setMessage(error ?? `Magic link sent to ${email} — check your inbox! ✉️`);
+    try {
+      const { error } = await signInWithEmail(email);
+      setMessage(error ?? `Magic link sent to ${email} — check your inbox! ✉️`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Something went wrong — try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function handleGuest() {

@@ -101,12 +101,17 @@ export async function handleAuthPopupReturn(): Promise<boolean> {
 
 export async function signInWithEmail(email: string): Promise<{ error?: string }> {
   if (!hasSupabaseEnv()) return { error: "Supabase is not configured" };
-  const { getSupabase } = await import("@/lib/supabase");
-  const { error } = await getSupabase().auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.origin },
-  });
-  return error ? { error: error.message } : {};
+  try {
+    const { getSupabase } = await import("@/lib/supabase");
+    const { error } = await getSupabase().auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    return error ? { error: error.message } : {};
+  } catch (err) {
+    console.error("[petdexter] signInWithEmail failed:", err);
+    return { error: err instanceof Error ? err.message : "Couldn't reach the server — check your connection and try again." };
+  }
 }
 
 export async function signOut(): Promise<void> {
