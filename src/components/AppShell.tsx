@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { initAuth, handleAuthPopupReturn } from "@/lib/auth";
-import { grantDailySnackIfNeeded } from "@/lib/economy";
+import { grantPeriodicSnackIfNeeded } from "@/lib/economy";
 import BottomNav from "@/components/BottomNav";
 import CardReveal from "@/components/CardReveal";
 import Welcome from "@/components/Welcome";
@@ -38,9 +38,9 @@ export default function AppShell() {
     initAuth().finally(() => setReady(true));
   }, []);
 
-  // The daily free Discovery Snack grant, checked once the app is interactive
+  // The rolling 12h free Discovery Snack top-up, checked once the app is interactive
   useEffect(() => {
-    if (ready && hasOnboarded) grantDailySnackIfNeeded();
+    if (ready && hasOnboarded) grantPeriodicSnackIfNeeded();
   }, [ready, hasOnboarded]);
 
   // Gate order: consent+sign-in → onboarding carousel → the game

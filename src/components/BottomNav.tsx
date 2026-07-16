@@ -46,15 +46,20 @@ export default function BottomNav() {
                 }`}
               >
                 <span
-                  className={`flex items-center justify-center rounded-2xl transition-all ${
+                  className={`flex items-center justify-center overflow-hidden rounded-2xl transition-all ${
                     isMeet
                       ? `h-16 w-16 rounded-full border-4 border-white shadow-lg ${
-                          isActive ? "bg-tangerine-deep" : "bg-tangerine"
-                        } text-white`
+                          isActive ? "scale-105 ring-4 ring-tangerine-deep" : ""
+                        }`
                       : `h-9 w-14 ${isActive ? `${activeColor} animate-pop-in` : "text-ink/40"}`
                   }`}
                 >
-                  <Icon className={isMeet ? "h-8 w-8" : "h-6 w-6"} />
+                  {isMeet ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src="/PetDexter_Icon.png" alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <Icon className="h-6 w-6" />
+                  )}
                 </span>
                 <span
                   className={`text-[11px] ${

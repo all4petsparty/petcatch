@@ -150,13 +150,13 @@ interface AppState {
   pawPoints: number;
   addPawPoints: (amount: number) => void;
 
-  // 🍬 Discovery Snacks — capture cost, flat daily grant (persisted)
+  // 🍬 Discovery Snacks — capture cost, rolling 12h top-up (persisted)
   snacks: number;
   setSnacks: (n: number) => void;
-  lastSnackGrantDay: string | null;
-  setLastSnackGrantDay: (day: string) => void;
-  adSnackDay: string | null;
-  setAdSnackDay: (day: string) => void;
+  lastSnackGrantAt: number | null;
+  setLastSnackGrantAt: (at: number) => void;
+  starterSnacksGranted: boolean;
+  setStarterSnacksGranted: (granted: boolean) => void;
 
   streakDays: number;
   lastCatchDay: string | null;
@@ -216,10 +216,10 @@ export const useAppStore = create<AppState>()(
 
       snacks: 0,
       setSnacks: (n) => set({ snacks: Math.max(0, n) }),
-      lastSnackGrantDay: null,
-      setLastSnackGrantDay: (lastSnackGrantDay) => set({ lastSnackGrantDay }),
-      adSnackDay: null,
-      setAdSnackDay: (adSnackDay) => set({ adSnackDay }),
+      lastSnackGrantAt: null,
+      setLastSnackGrantAt: (lastSnackGrantAt) => set({ lastSnackGrantAt }),
+      starterSnacksGranted: false,
+      setStarterSnacksGranted: (starterSnacksGranted) => set({ starterSnacksGranted }),
 
       streakDays: 0,
       lastCatchDay: null,
@@ -256,8 +256,8 @@ export const useAppStore = create<AppState>()(
         hasOnboarded: s.hasOnboarded,
         guestImportDoneFor: s.guestImportDoneFor,
         snacks: s.snacks,
-        lastSnackGrantDay: s.lastSnackGrantDay,
-        adSnackDay: s.adSnackDay,
+        lastSnackGrantAt: s.lastSnackGrantAt,
+        starterSnacksGranted: s.starterSnacksGranted,
         streakDays: s.streakDays,
         lastCatchDay: s.lastCatchDay,
         claimedAchievements: s.claimedAchievements,
@@ -267,7 +267,7 @@ export const useAppStore = create<AppState>()(
       }),
       // Rehydrated manually in AppShell after mount to avoid SSR mismatch
       skipHydration: true,
-      version: 3,
+      version: 4,
       /**
        * Normalizes every persisted card to the CURRENT PetCard shape,
        * regardless of how old it is — including cards from the original
@@ -284,7 +284,22 @@ export const useAppStore = create<AppState>()(
        * always a safe way to force every client to re-normalize.
        */
       migrate: (persisted) => {
-        const state = persisted as { collection?: Array<Record<string, unknown>> };
+        const state = persisted as {
+          collection?: Array<Record<string, unknown>>;
+          lastSnackGrantDay?: string | null;
+          adSnackDay?: string | null;
+          starterSnacksGranted?: boolean;
+          lastSnackGrantAt?: number | null;
+        };
+        // v3→v4: the daily calendar-day snack grant became a rolling 12h
+        // timestamp grant. Anyone who'd already received their one-time
+        // starter grant (tracked via the old lastSnackGrantDay field) must
+        // carry that forward as starterSnacksGranted, or they'd wrongly
+        // receive a second starter grant of snacks.
+        if (state.lastSnackGrantDay && state.starterSnacksGranted === undefined) {
+          state.starterSnacksGranted = true;
+          state.lastSnackGrantAt = Date.now();
+        }
         if (Array.isArray(state?.collection)) {
           state.collection = state.collection.map((c) => {
             const legacyCount = typeof c.encounterCount === "number" ? c.encounterCount : 1;

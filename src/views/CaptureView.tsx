@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { preloadModels, grabFrame, classifyFrame, imageToDataUrl } from "@/lib/vision";
 import { startCapture, finalizeCapture } from "@/lib/capture";
-import { spendSnack, grantSnacks } from "@/lib/economy";
+import { spendSnack, refundSnack, grantSnacks } from "@/lib/economy";
 import FullScreenAd from "@/components/FullScreenAd";
 import TreatThrower from "@/components/TreatThrower";
 import CaptureTutorial from "@/components/CaptureTutorial";
@@ -12,7 +12,7 @@ import CaptureTutorial from "@/components/CaptureTutorial";
 const REJECT_MESSAGES: Record<string, string> = {
   screen_detected: "That looks like a screen! 📺 PetDexter only counts real-life friends.",
   no_animal: "No pet in the shot! 🔍 Aim the treat at a dog, cat, rabbit, or bird.",
-  no_snacks: "Out of Discovery Snacks! 🍬 Watch an ad for a bonus snack, or wait for tomorrow's free grant.",
+  no_snacks: "Out of Discovery Snacks! 🍬 Watch an ad for a bonus snack, or wait for your next free top-up.",
   error: "The treat missed! 😵 Give it another toss.",
 };
 
@@ -75,6 +75,7 @@ export default function CaptureView() {
     try {
       const [scan] = await Promise.all([classifyFrame(dataUrl), brew]);
       if (!scan.ok) {
+        refundSnack(); // no capture landed — the thrown treat shouldn't cost the player
         patchCaptureFlow({ status: "rejected", reason: scan.reason ?? "error" });
         return;
       }
@@ -83,6 +84,7 @@ export default function CaptureView() {
       // finish processing in the background — no waiting
       finalizeCapture(card);
     } catch {
+      refundSnack();
       patchCaptureFlow({ status: "rejected", reason: "error" });
     }
   }
@@ -136,13 +138,16 @@ export default function CaptureView() {
       <TreatThrower zoneRef={frameRef} onThrow={handleTreatThrow} />
 
       {rejectReason === "no_snacks" ? (
-        <button
-          type="button"
-          onClick={() => setShowAd(true)}
-          className="tappable animate-pop-in rounded-2xl bg-tangerine/20 px-4 py-3 text-center font-bold text-tangerine-deep"
-        >
-          {REJECT_MESSAGES.no_snacks}
-        </button>
+        <div className="animate-pop-in flex flex-col items-center gap-2.5 rounded-2xl bg-tangerine/20 px-4 py-3 text-center">
+          <p className="font-bold text-tangerine-deep">{REJECT_MESSAGES.no_snacks}</p>
+          <button
+            type="button"
+            onClick={() => setShowAd(true)}
+            className="tappable flex items-center gap-2 rounded-full bg-tangerine px-5 py-2.5 text-sm font-extrabold text-white shadow-md"
+          >
+            ▶️ Tap to watch an ad for +1 snack
+          </button>
+        </div>
       ) : rejectReason ? (
         <p className="animate-pop-in rounded-2xl bg-tangerine/20 px-4 py-3 text-center font-bold text-tangerine-deep">
           {REJECT_MESSAGES[rejectReason]}

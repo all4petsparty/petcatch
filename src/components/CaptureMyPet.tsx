@@ -43,7 +43,7 @@ export default function CaptureMyPet({ onClose }: { onClose: () => void }) {
   function handleDragStart(e: React.PointerEvent) {
     draggingRef.current = true;
     dragStartYRef.current = e.clientY;
-    (e.target as Element).setPointerCapture(e.pointerId);
+    try { (e.target as Element).setPointerCapture(e.pointerId); } catch {}
   }
   function handleDragMove(e: React.PointerEvent) {
     if (!draggingRef.current) return;

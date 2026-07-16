@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { ACHIEVEMENTS, claimAchievement, grantSnacks, canClaimSnackAdToday, claimSnackAdToday, metCount } from "@/lib/economy";
+import { ACHIEVEMENTS, claimAchievement, grantSnacks, metCount } from "@/lib/economy";
 import Portal from "@/components/Portal";
-import RewardedAd from "@/components/RewardedAd";
+import FullScreenAd from "@/components/FullScreenAd";
 
 /** Snacks at or below this count trigger the restock nudge. */
 const LOW_SNACKS = 1;
@@ -51,7 +51,6 @@ export default function WelcomeBack() {
   if (!open) return null;
 
   const lowSnacks = snacks <= LOW_SNACKS;
-  const adAvailable = canClaimSnackAdToday();
 
   // next unfinished mission = first unclaimed achievement
   const met = metCount();
@@ -90,18 +89,15 @@ export default function WelcomeBack() {
           {lowSnacks && (
             <div className="flex flex-col gap-3 rounded-2xl bg-tangerine/15 p-4">
               <p className="text-sm font-bold text-ink/80">
-                🍬 You&apos;re running low on Discovery Snacks (<b>{snacks}</b>)!{" "}
-                {adAvailable ? "Watch a short video to restock and keep meeting pets." : "More arrive with tomorrow's free daily grant."}
+                🍬 You&apos;re running low on Discovery Snacks (<b>{snacks}</b>)! Watch a short ad to restock and keep meeting pets.
               </p>
-              {adAvailable && (
-                <button
-                  type="button"
-                  onClick={() => setShowAd(true)}
-                  className="tappable rounded-full bg-tangerine px-4 py-3 text-sm font-extrabold text-white shadow-md"
-                >
-                  🎬 Watch video
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowAd(true)}
+                className="tappable flex items-center justify-center gap-2 rounded-full bg-tangerine px-4 py-3 text-sm font-extrabold text-white shadow-md"
+              >
+                ▶️ Tap to watch an ad for +1 snack
+              </button>
             </div>
           )}
 
@@ -148,10 +144,12 @@ export default function WelcomeBack() {
       </div>
 
       {showAd && (
-        <RewardedAd
-          rewardLabel="1 Discovery Snack"
-          onComplete={() => { grantSnacks(1); claimSnackAdToday(); setClaimNote("+1 snack! 🍬"); }}
-          onClose={() => setShowAd(false)}
+        <FullScreenAd
+          onFinish={() => {
+            grantSnacks(1);
+            setShowAd(false);
+            setClaimNote("+1 snack! 🍬");
+          }}
         />
       )}
     </Portal>

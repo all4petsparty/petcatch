@@ -10,28 +10,42 @@ import { useAppStore } from "@/lib/store";
 /** Granted once, the first time a user finishes onboarding. */
 export const STARTER_SNACKS = 3;
 
-/** Small daily safety allowance so a player is never hard-blocked. */
-export const DAILY_FREE_SNACKS = 2;
+/** Free top-up granted on a rolling window so a player is never hard-blocked. */
+export const PERIODIC_FREE_SNACKS = 2;
+export const PERIODIC_GRANT_MS = 12 * 60 * 60 * 1000;
 
 export function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Grant the daily free snacks once per calendar day, on app open. */
-export function grantDailySnackIfNeeded() {
+/**
+ * Top up Discovery Snacks on a rolling 12h window, checked on app open.
+ * Deliberately non-accumulating: skipping a period (app closed for days)
+ * still only grants PERIODIC_FREE_SNACKS once, and the clock resets to
+ * "now" rather than backfilling every missed 12h window.
+ */
+export function grantPeriodicSnackIfNeeded() {
   const store = useAppStore.getState();
-  const today = todayKey();
-  if (store.lastSnackGrantDay === today) return;
-  store.setSnacks(store.snacks + DAILY_FREE_SNACKS);
-  store.setLastSnackGrantDay(today);
+  const now = Date.now();
+  if (store.lastSnackGrantAt && now - store.lastSnackGrantAt < PERIODIC_GRANT_MS) return;
+  store.setSnacks(store.snacks + PERIODIC_FREE_SNACKS);
+  store.setLastSnackGrantAt(now);
+}
+
+/** Milliseconds until the next periodic top-up (0 if one is due now). */
+export function msUntilNextSnackGrant(): number {
+  const store = useAppStore.getState();
+  if (!store.lastSnackGrantAt) return 0;
+  return Math.max(0, PERIODIC_GRANT_MS - (Date.now() - store.lastSnackGrantAt));
 }
 
 /** One-time starter grant so the capture flow is usable immediately after onboarding. */
 export function grantStarterSnacksIfNeeded() {
   const store = useAppStore.getState();
-  if (store.lastSnackGrantDay) return; // already onboarded once
+  if (store.starterSnacksGranted) return;
   store.setSnacks(store.snacks + STARTER_SNACKS);
-  store.setLastSnackGrantDay(todayKey());
+  store.setStarterSnacksGranted(true);
+  store.setLastSnackGrantAt(Date.now()); // starts the 12h top-up clock
 }
 
 /** Spend one Discovery Snack on an unknown-pet capture. Returns false when empty. */
@@ -42,18 +56,16 @@ export function spendSnack(): boolean {
   return true;
 }
 
-/** Grant a bonus snack (rewarded ad / achievement / brand QR — capped to once/day for ads). */
+/** Refund a Discovery Snack — a thrown treat that didn't land a capture (no pet recognized, etc.) shouldn't cost the player. */
+export function refundSnack() {
+  const store = useAppStore.getState();
+  store.setSnacks(store.snacks + 1);
+}
+
+/** Grant a bonus snack (rewarded ad / achievement / brand QR — ads are unlimited, watch as many as you like). */
 export function grantSnacks(n: number) {
   const store = useAppStore.getState();
   store.setSnacks(store.snacks + n);
-}
-
-export function canClaimSnackAdToday(): boolean {
-  return useAppStore.getState().adSnackDay !== todayKey();
-}
-
-export function claimSnackAdToday() {
-  useAppStore.getState().setAdSnackDay(todayKey());
 }
 
 // ---------------------------------------------------------------------------

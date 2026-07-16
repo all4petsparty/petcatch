@@ -5,8 +5,7 @@ import { useAppStore, type Species } from "@/lib/store";
 import { SPECIES_EMOJI } from "@/components/icons";
 import { explorerLevelFromPoints } from "@/lib/cardFactory";
 import {
-  ACHIEVEMENTS, claimAchievement, grantSnacks, mostFamiliarPet, todayKey,
-  canClaimSnackAdToday, claimSnackAdToday, metCount,
+  ACHIEVEMENTS, claimAchievement, grantSnacks, mostFamiliarPet, todayKey, metCount,
 } from "@/lib/economy";
 import SettingsSheet from "@/components/SettingsSheet";
 import FullScreenAd from "@/components/FullScreenAd";
@@ -41,7 +40,6 @@ export default function ProfileView() {
   const todayCount = collection.filter((c) => c.createdAt.slice(0, 10) === today).length;
   const mostFamiliar = mostFamiliarPet();
   const streak = lastCatchDay === today || lastCatchDay === new Date(Date.now() - 86400000).toISOString().slice(0, 10) ? streakDays : 0;
-  const adAvailable = canClaimSnackAdToday();
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -139,7 +137,6 @@ export default function ProfileView() {
             type="button"
             onClick={() => {
               grantSnacks(1);
-              claimSnackAdToday();
               setAdReadyToClaim(false);
             }}
             className="tappable mt-3 w-full animate-wiggle rounded-full bg-grass px-3 py-2.5 text-sm font-extrabold text-white shadow-sm"
@@ -149,15 +146,14 @@ export default function ProfileView() {
         ) : (
           <button
             type="button"
-            disabled={!adAvailable}
             onClick={() => setShowAd(true)}
-            className="tappable mt-3 w-full rounded-full bg-sunny px-3 py-2.5 text-sm font-extrabold text-ink shadow-sm disabled:opacity-40"
+            className="tappable mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-sunny px-3 py-2.5 text-sm font-extrabold text-ink shadow-sm"
           >
-            🎬 Watch a video for +1 snack {adAvailable ? "" : "(done today)"}
+            ▶️ Tap to watch an ad for +1 snack
           </button>
         )}
         <p className="mt-2 text-xs font-semibold text-ink/50">
-          A small free grant of snacks arrives every day you open the app.
+          🍬 +2 free snacks show up automatically every 12 hours — and you can watch unlimited ads any time for +1 each.
         </p>
       </section>
 
