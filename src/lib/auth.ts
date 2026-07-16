@@ -25,15 +25,33 @@ function toAuthUser(u: { id: string; email?: string; user_metadata?: Record<stri
   };
 }
 
-/** Restore session + subscribe to auth changes. Call once from AppShell. */
+/**
+ * Restore session + subscribe to auth changes. Call once from AppShell.
+ *
+ * Deliberately does NOT resolve via a bare getSession() call: right after
+ * an OAuth redirect lands with `#access_token=...` in the URL, Supabase
+ * parses that hash asynchronously during client startup, so an immediate
+ * getSession() can race ahead and return null even though the token is
+ * sitting right there — which briefly renders the Welcome screen instead
+ * of the signed-in app (looked like being dropped into "a different
+ * version" until reloading forced a fresh read). Waiting for the first
+ * onAuthStateChange event (Supabase always fires INITIAL_SESSION once
+ * startup — including any pending hash parse — is complete) avoids the
+ * race entirely, no reload needed.
+ */
 export async function initAuth(): Promise<void> {
   if (!hasSupabaseEnv()) return;
   const { getSupabase } = await import("@/lib/supabase");
   const supabase = getSupabase();
-  const { data } = await supabase.auth.getSession();
-  useAppStore.getState().setAuthUser(toAuthUser(data.session?.user ?? null));
-  supabase.auth.onAuthStateChange((_event, session) => {
-    useAppStore.getState().setAuthUser(toAuthUser(session?.user ?? null));
+  await new Promise<void>((resolve) => {
+    let settled = false;
+    const settle = () => { if (!settled) { settled = true; resolve(); } };
+    supabase.auth.onAuthStateChange((_event, session) => {
+      useAppStore.getState().setAuthUser(toAuthUser(session?.user ?? null));
+      settle();
+    });
+    // safety net — never block the app forever if Supabase is unreachable
+    setTimeout(settle, 4000);
   });
 }
 
