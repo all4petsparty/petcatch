@@ -244,7 +244,7 @@ export default function CollectionView() {
           <SpeciesLibrary
             cards={myPets}
             emptyTitle="No pets registered yet!"
-            emptyBody="Add a pet you own to give them a profile — no snacks needed."
+            emptyBody="Add your own pet family here - just throw them a treat to capture!"
           />
         </>
       )}

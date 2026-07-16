@@ -1,6 +1,11 @@
 -- ============================================================
 -- PetDexter — wire the live Meet! capture flow up to Supabase.
 --
+-- REQUIRES 0007 to have run successfully first — this migration calls
+-- public.can_view_pet_profile(), which 0007 defines. If you see
+-- "function public.can_view_pet_profile(uuid, text) does not exist",
+-- run the (now idempotent, safe to re-run) 0007 again before this one.
+--
 -- Since the Phase 0 rewrite, capturing a pet in the app has been fully
 -- local-only: nothing ever wrote to pet_cards, so map_discoveries and the
 -- leaderboard_* views (built on pet_cards) have been silently stale for
@@ -25,6 +30,7 @@ alter table public.encounters
   add column if not exists lat double precision,
   add column if not exists lng double precision;
 
+drop policy if exists "encounters readable if parent pet readable" on public.encounters;
 create policy "encounters readable if parent pet readable"
   on public.encounters for select
   using (

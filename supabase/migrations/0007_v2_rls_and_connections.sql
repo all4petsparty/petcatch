@@ -3,6 +3,9 @@
 -- Pet Family QR connection RPC (spec §7, §15).
 --
 -- Run this AFTER 0006_v2_identity_schema.sql.
+-- Safe to run more than once — every policy is dropped-then-recreated
+-- and every function uses create or replace, so a partial or repeated
+-- run never errors on "already exists."
 --
 -- Scope: this migration locks down every table created in 0006 with
 -- row-level security. Only pet_profiles, pet_images, connections and
@@ -55,24 +58,29 @@ returns boolean language sql stable security definer set search_path = public as
     );
 $$;
 
+drop policy if exists "pet_profiles readable per visibility" on public.pet_profiles;
 create policy "pet_profiles readable per visibility"
   on public.pet_profiles for select
   using (public.can_view_pet_profile(owner_user_id, visibility));
 
+drop policy if exists "pet_profiles owner writes" on public.pet_profiles;
 create policy "pet_profiles owner writes"
   on public.pet_profiles for insert
   with check (owner_user_id = auth.uid());
 
+drop policy if exists "pet_profiles owner updates" on public.pet_profiles;
 create policy "pet_profiles owner updates"
   on public.pet_profiles for update
   using (owner_user_id = auth.uid());
 
+drop policy if exists "pet_profiles owner deletes" on public.pet_profiles;
 create policy "pet_profiles owner deletes"
   on public.pet_profiles for delete
   using (owner_user_id = auth.uid());
 
 -- ---- pet_images ------------------------------------------------------
 
+drop policy if exists "pet_images readable if parent pet readable" on public.pet_images;
 create policy "pet_images readable if parent pet readable"
   on public.pet_images for select
   using (
@@ -83,12 +91,14 @@ create policy "pet_images readable if parent pet readable"
     )
   );
 
+drop policy if exists "pet_images owner writes" on public.pet_images;
 create policy "pet_images owner writes"
   on public.pet_images for insert
   with check (
     exists (select 1 from public.pet_profiles pp where pp.id = pet_id and pp.owner_user_id = auth.uid())
   );
 
+drop policy if exists "pet_images owner deletes" on public.pet_images;
 create policy "pet_images owner deletes"
   on public.pet_images for delete
   using (
@@ -97,20 +107,24 @@ create policy "pet_images owner deletes"
 
 -- ---- connections -------------------------------------------------------
 
+drop policy if exists "connections readable by participants" on public.connections;
 create policy "connections readable by participants"
   on public.connections for select
   using (user_a = auth.uid() or user_b = auth.uid());
 
+drop policy if exists "connections insertable by participants" on public.connections;
 create policy "connections insertable by participants"
   on public.connections for insert
   with check (user_a = auth.uid() or user_b = auth.uid());
 
 -- ---- encounters (owner-only; not yet written by the client) ----------
 
+drop policy if exists "encounters owner readable" on public.encounters;
 create policy "encounters owner readable"
   on public.encounters for select
   using (user_id = auth.uid());
 
+drop policy if exists "encounters owner writable" on public.encounters;
 create policy "encounters owner writable"
   on public.encounters for insert
   with check (user_id = auth.uid());
