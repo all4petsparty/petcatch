@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import type { TreatType } from "@/lib/treats";
 
 /** The five bottom-nav views (PetDexter V2 IA — see PetDexter_V2_Implementation_Plan.md §1). */
 export type ViewKey = "discover" | "petdex" | "meet" | "play" | "me";
@@ -118,6 +119,13 @@ interface AppState {
   /** True once the one-time "add your own pets" prompt has been shown/dismissed. */
   myPetsPromptSeen: boolean;
   setMyPetsPromptSeen: (v: boolean) => void;
+  /** True once the one-time Meet! capture tutorial (treats + throw) has been shown. */
+  meetTutorialSeen: boolean;
+  setMeetTutorialSeen: (v: boolean) => void;
+
+  // The currently-selected treat flavor — cosmetic only (persisted)
+  selectedTreat: TreatType;
+  setSelectedTreat: (t: TreatType) => void;
 
   // Auth session (memory only — Supabase persists its own session)
   authUser: AuthUser | null;
@@ -178,6 +186,11 @@ export const useAppStore = create<AppState>()(
       setGuestImportDoneFor: (guestImportDoneFor) => set({ guestImportDoneFor }),
       myPetsPromptSeen: false,
       setMyPetsPromptSeen: (myPetsPromptSeen) => set({ myPetsPromptSeen }),
+      meetTutorialSeen: false,
+      setMeetTutorialSeen: (meetTutorialSeen) => set({ meetTutorialSeen }),
+
+      selectedTreat: "bone",
+      setSelectedTreat: (selectedTreat) => set({ selectedTreat }),
 
       authUser: null,
       setAuthUser: (authUser) => set({ authUser }),
@@ -249,6 +262,8 @@ export const useAppStore = create<AppState>()(
         lastCatchDay: s.lastCatchDay,
         claimedAchievements: s.claimedAchievements,
         myPetsPromptSeen: s.myPetsPromptSeen,
+        meetTutorialSeen: s.meetTutorialSeen,
+        selectedTreat: s.selectedTreat,
       }),
       // Rehydrated manually in AppShell after mount to avoid SSR mismatch
       skipHydration: true,

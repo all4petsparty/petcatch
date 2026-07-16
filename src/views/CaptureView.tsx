@@ -6,6 +6,8 @@ import { preloadModels, grabFrame, classifyFrame, imageToDataUrl } from "@/lib/v
 import { startCapture, finalizeCapture } from "@/lib/capture";
 import { spendSnack, grantSnacks } from "@/lib/economy";
 import RewardedAd from "@/components/RewardedAd";
+import TreatThrower from "@/components/TreatThrower";
+import CaptureTutorial from "@/components/CaptureTutorial";
 
 const REJECT_MESSAGES: Record<string, string> = {
   screen_detected: "That looks like a screen! 📺 PetDexter only counts real-life friends.",
@@ -26,9 +28,10 @@ const DEMO_CENTER = { lat: 14.5995, lng: 120.9842 };
 /**
  * Meet! view — throw a treat at the pet on the live camera to meet them.
  * The card appears within ~5s; the cutout/re-identification finishes in
- * the background afterwards. The thrown item is a Discovery Snack — a
- * generic treat today, and (from Phase 6 on) whichever brand-associated
- * treat the player has selected/owns.
+ * the background afterwards. The thrown item's flavor (bone/bird feed/
+ * fish/salad leaf, picked via TreatThrower's hold-to-choose picker) is
+ * purely cosmetic — species is always determined by on-device image
+ * analysis, never by which treat was thrown.
  */
 export default function CaptureView() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -41,10 +44,6 @@ export default function CaptureView() {
   const [rejectReason, setRejectReason] = useState<string | null>(null);
   const [showAd, setShowAd] = useState(false);
   const snacks = useAppStore((s) => s.snacks);
-
-  // treat drag
-  const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
-  const dragOrigin = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (activeView !== "meet") return;
@@ -88,24 +87,9 @@ export default function CaptureView() {
     }
   }
 
-  function onTreatDown(e: React.PointerEvent) {
-    try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch {}
-    dragOrigin.current = { x: e.clientX, y: e.clientY };
-    setDrag({ dx: 0, dy: 0 });
-  }
-  function onTreatMove(e: React.PointerEvent) {
-    if (!dragOrigin.current) return;
-    setDrag({ dx: e.clientX - dragOrigin.current.x, dy: e.clientY - dragOrigin.current.y });
-  }
-  function onTreatUp(e: React.PointerEvent) {
-    if (!dragOrigin.current) return;
-    const zone = frameRef.current?.getBoundingClientRect();
-    const hit = zone && e.clientX >= zone.left && e.clientX <= zone.right &&
-      e.clientY >= zone.top && e.clientY <= zone.bottom;
-    dragOrigin.current = null;
-    setDrag(null);
+  function handleTreatThrow() {
     const video = videoRef.current;
-    if (hit && video && video.readyState >= 2) throwCapture(grabFrame(video));
+    if (video && video.readyState >= 2) throwCapture(grabFrame(video));
   }
 
   async function handleDemoThrow(src: string) {
@@ -149,17 +133,7 @@ export default function CaptureView() {
         </div>
       </div>
 
-      <button
-        type="button"
-        aria-label="Treat — drag onto the camera to meet a pet"
-        onPointerDown={onTreatDown}
-        onPointerMove={onTreatMove}
-        onPointerUp={onTreatUp}
-        className={`mx-auto flex h-20 w-20 touch-none items-center justify-center rounded-full border-8 border-sunny bg-tangerine text-4xl shadow-xl ${drag ? "" : "transition-transform"}`}
-        style={drag ? { transform: `translate(${drag.dx}px, ${drag.dy}px) scale(1.2)` } : undefined}
-      >
-        🍬
-      </button>
+      <TreatThrower zoneRef={frameRef} onThrow={handleTreatThrow} />
 
       {rejectReason && (
         <p className="animate-pop-in rounded-2xl bg-tangerine/20 px-4 py-3 text-center font-bold text-tangerine-deep">
@@ -187,6 +161,8 @@ export default function CaptureView() {
       {showAd && (
         <RewardedAd rewardLabel="1 Discovery Snack" onComplete={() => grantSnacks(1)} onClose={() => setShowAd(false)} />
       )}
+
+      <CaptureTutorial />
     </div>
   );
 }

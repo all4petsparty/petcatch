@@ -6,6 +6,7 @@ import { useAppStore, type Species, type PetCard } from "@/lib/store";
 import { preloadModels, grabFrame, classifyFrame } from "@/lib/vision";
 import { syncOwnedPetToSupabase } from "@/lib/connections";
 import { SPECIES_EMOJI } from "@/components/icons";
+import TreatThrower from "@/components/TreatThrower";
 
 const SPECIES_OPTIONS: Species[] = ["dog", "cat", "rabbit", "bird", "other"];
 const TRAIT_OPTIONS = [
@@ -26,8 +27,6 @@ export default function CaptureMyPet({ onClose }: { onClose: () => void }) {
   const addCard = useAppStore((s) => s.addCard);
   const collection = useAppStore((s) => s.collection);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
-  const dragOrigin = useRef<{ x: number; y: number } | null>(null);
 
   // step 2: details form, once a photo is captured
   const [photo, setPhoto] = useState<string | null>(null);
@@ -66,24 +65,9 @@ export default function CaptureMyPet({ onClose }: { onClose: () => void }) {
     }
   }
 
-  function onTreatDown(e: React.PointerEvent) {
-    try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch {}
-    dragOrigin.current = { x: e.clientX, y: e.clientY };
-    setDrag({ dx: 0, dy: 0 });
-  }
-  function onTreatMove(e: React.PointerEvent) {
-    if (!dragOrigin.current) return;
-    setDrag({ dx: e.clientX - dragOrigin.current.x, dy: e.clientY - dragOrigin.current.y });
-  }
-  function onTreatUp(e: React.PointerEvent) {
-    if (!dragOrigin.current) return;
-    const zone = frameRef.current?.getBoundingClientRect();
-    const hit = zone && e.clientX >= zone.left && e.clientX <= zone.right &&
-      e.clientY >= zone.top && e.clientY <= zone.bottom;
-    dragOrigin.current = null;
-    setDrag(null);
+  function handleTreatThrow() {
     const video = videoRef.current;
-    if (hit && video && video.readyState >= 2) handleThrow(grabFrame(video));
+    if (video && video.readyState >= 2) handleThrow(grabFrame(video));
   }
 
   function toggleTrait(t: string) {
@@ -236,17 +220,7 @@ export default function CaptureMyPet({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      <button
-        type="button"
-        aria-label="Treat — drag onto the camera to capture your pet"
-        onPointerDown={onTreatDown}
-        onPointerMove={onTreatMove}
-        onPointerUp={onTreatUp}
-        className={`mx-auto flex h-20 w-20 touch-none items-center justify-center rounded-full border-8 border-bubblegum bg-tangerine text-4xl shadow-xl ${drag ? "" : "transition-transform"}`}
-        style={drag ? { transform: `translate(${drag.dx}px, ${drag.dy}px) scale(1.2)` } : undefined}
-      >
-        🍬
-      </button>
+      <TreatThrower zoneRef={frameRef} onThrow={handleTreatThrow} />
     </div>,
     document.body
   );
