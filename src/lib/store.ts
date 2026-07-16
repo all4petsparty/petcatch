@@ -246,27 +246,41 @@ export const useAppStore = create<AppState>()(
       }),
       // Rehydrated manually in AppShell after mount to avoid SSR mismatch
       skipHydration: true,
-      version: 2,
+      version: 3,
       /**
-       * v1→v2: PetCard replaced the flat `encounterCount`/`lastMetAt` pair
-       * with a real `encounters` log (Phase 1) and added `owned`. Normalize
-       * any card persisted under the old shape so existing local PetDexes
-       * don't crash on load.
+       * Normalizes every persisted card to the CURRENT PetCard shape,
+       * regardless of how old it is — including cards from the original
+       * pre-Phase-0 build (rarity/stats/candy era) that predate fields like
+       * `traits` and `encounters` entirely. Deliberately re-derives every
+       * field from scratch rather than only patching what v1→v2 touched:
+       * an earlier version of this function only backfilled `encounters`,
+       * left `traits` undefined on very old cards, and — since it only ran
+       * once per version bump — silently stayed broken for anyone who'd
+       * already been migrated to "version 2", causing a hard crash
+       * (`card.traits.includes` on undefined) when opening such a card.
+       * This version is intentionally idempotent/safe to rerun on
+       * already-current data, so bumping the version number here is
+       * always a safe way to force every client to re-normalize.
        */
       migrate: (persisted) => {
         const state = persisted as { collection?: Array<Record<string, unknown>> };
-        if (state?.collection) {
+        if (Array.isArray(state?.collection)) {
           state.collection = state.collection.map((c) => {
-            if (Array.isArray(c.encounters)) return c;
             const legacyCount = typeof c.encounterCount === "number" ? c.encounterCount : 1;
             const lastMetAt = typeof c.lastMetAt === "string" ? c.lastMetAt : (c.createdAt as string);
+            const encounters = Array.isArray(c.encounters)
+              ? c.encounters
+              : Array.from({ length: Math.max(1, legacyCount) }, () => ({
+                  date: lastMetAt, lat: c.lat ?? null, lng: c.lng ?? null, venueName: c.venueName ?? null,
+                }));
             const { encounterCount: _ec, lastMetAt: _lm, ...rest } = c;
             return {
               ...rest,
-              owned: c.owned ?? false,
-              encounters: Array.from({ length: Math.max(1, legacyCount) }, () => ({
-                date: lastMetAt, lat: c.lat ?? null, lng: c.lng ?? null, venueName: c.venueName ?? null,
-              })),
+              traits: Array.isArray(c.traits) ? c.traits : [],
+              owned: typeof c.owned === "boolean" ? c.owned : false,
+              hatched: typeof c.hatched === "boolean" ? c.hatched : true,
+              backdrop: typeof c.backdrop === "number" ? c.backdrop : 0,
+              encounters,
             };
           });
         }

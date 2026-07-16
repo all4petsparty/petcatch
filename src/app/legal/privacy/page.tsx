@@ -20,7 +20,7 @@ export default function PrivacyPage() {
       <h2>2. Data We Collect and Process</h2>
       <p>To properly run the PetDexter mobile ecosystem, we collect several categories of information:</p>
       <ul>
-        <li><b>Registration Data:</b> Name, email address, and profile image shared when establishing an account through Google or Apple Sign-In authentication parameters.</li>
+        <li><b>Registration Data:</b> Name, email address, and profile image shared when establishing an account through Google or Apple Sign-In authentication parameters. Your name and email are retained separately from your public in-app profile and are used, among other things, to send you account, service, and — where you have not opted out — product update and promotional communications (see Sections 3 and 8).</li>
         <li><b>Gameplay and Collection Records:</b> Dynamic statistics, pet species/breed classifications, user-assigned custom names, and visual cards created over the course of application interaction.</li>
         <li><b>On-Device Biometric Signatures (Animal Specific):</b> A mathematically processed vector fingerprint generated from standard 2D camera photos of an animal&apos;s face or fur patterns. <i>Note: This mechanism isolates animal morphology strictly to ensure database uniqueness and does not parse or map human facial geometry.</i></li>
         <li><b>Precise Geolocation Data:</b> Real-time spatial coordinates (latitude and longitude) captured via the browser&apos;s native API <i>only</i> while actively mapping a spot, executing a check-in, or performing a capture. We do not run background location tracking.</li>
@@ -33,6 +33,7 @@ export default function PrivacyPage() {
         <li><b>Contract Fulfillment:</b> To render the application mechanics functional, load the interactive discovery map, and save customized cards to your profile.</li>
         <li><b>Consent:</b> When you check the terms authorization during account generation to enable localized web notifications, access location services, or allow anonymized tracking performance.</li>
         <li><b>Legitimate Interest:</b> To preserve competitive gameplay integrity by matching extracted vector metadata against existing entries to recognize unique discoveries and block spoofing attempts.</li>
+        <li><b>Direct Marketing (Consent, Opt-Out Available):</b> We may email your registered address about new features, tips, milestones, partner venues/events, and similar product updates. This is separate from required account/service emails (e.g. sign-in links, security notices), which are sent regardless of marketing preference. Every marketing email includes an unsubscribe link, and you may withdraw consent at any time — see Section 8.</li>
       </ul>
 
       <h2>4. Data Sharing and Third-Party Processors</h2>
@@ -46,6 +47,7 @@ export default function PrivacyPage() {
         <li><b>Map Tiles:</b> MapTiler API to securely fetch custom-designed playful visual themes on MapLibre map renders.</li>
         <li><b>Analytics and Crash Logs:</b> Tools to capture anonymized performance anomalies to identify bugs across mobile browser versions.</li>
         <li><b>Advertising Networks:</b> Google AdMob to deliver rewarded video units and banner spaces to support the free platform.</li>
+        <li><b>Email Delivery:</b> Transactional and marketing email providers used solely to deliver sign-in links, account notices, and (where you have not opted out) product update emails to your registered address. These providers do not use your data for their own purposes.</li>
       </ul>
 
       <h2>5. On-Device AI Processing Mechanics</h2>
@@ -77,7 +79,7 @@ export default function PrivacyPage() {
       <ul>
         <li><b>Right to Be Informed:</b> Knowing whether your data is being processed.</li>
         <li><b>Right to Access:</b> Requesting an export of your specific account records.</li>
-        <li><b>Right to Object:</b> Refusing the processing of your data for marketing or advertising purposes.</li>
+        <li><b>Right to Object:</b> Refusing the processing of your data for marketing or advertising purposes. You can unsubscribe from any marketing email instantly via the link in that email, or by emailing our data team — required account/service emails will continue regardless.</li>
         <li><b>Right to Erasure or Blocking:</b> Ordering the removal of your personal profiles from active frameworks.</li>
         <li><b>Right to Rectification:</b> Instantly updating inaccurate details on your user dashboard.</li>
       </ul>

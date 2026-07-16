@@ -21,6 +21,7 @@ export default function TermsPage() {
         <li><b>Authentication:</b> Registration requires secure verification via Google Sign-In, Apple Sign-In, or a valid email address.</li>
         <li><b>Age Limitation:</b> Use of the App is strictly limited to natural persons aged 13 or older, in compliance with applicable local protection laws. Users under 18 must obtain explicit parental or guardian consent.</li>
         <li><b>Account Limits:</b> Only one unique user account per person is permitted. Creating multiple placeholder accounts or using automation scripts to farm rewards will result in immediate suspension.</li>
+        <li><b>Communications:</b> By registering, you agree that All4Pets may contact your registered email with account and service communications, and — unless you opt out — product updates and promotional messages. See the <b>Privacy Policy</b> for details and how to unsubscribe.</li>
       </ul>
 
       <h2>3. Description of Services</h2>
