@@ -101,7 +101,8 @@ export default function TreatThrower({
                 type="button"
                 aria-label={`Use ${TREATS[t].label}`}
                 onClick={() => pickTreat(t)}
-                className="animate-pop-in flex h-14 w-14 items-center justify-center rounded-full border-4 border-sunny bg-tangerine text-2xl shadow-xl"
+                onContextMenu={(e) => e.preventDefault()}
+                className="animate-pop-in select-none flex h-14 w-14 items-center justify-center rounded-full border-4 border-sunny bg-tangerine text-2xl shadow-xl [-webkit-touch-callout:none]"
               >
                 {TREATS[t].emoji}
               </button>
@@ -116,7 +117,8 @@ export default function TreatThrower({
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
-        className={`relative z-50 flex h-20 w-20 touch-none items-center justify-center rounded-full border-8 border-sunny bg-tangerine text-4xl shadow-xl ${drag ? "" : "transition-transform"}`}
+        onContextMenu={(e) => e.preventDefault()}
+        className={`relative z-50 flex h-20 w-20 touch-none select-none items-center justify-center rounded-full border-8 border-sunny bg-tangerine text-4xl shadow-xl [-webkit-touch-callout:none] ${drag ? "" : "transition-transform"}`}
         style={drag ? { transform: `translate(${drag.dx}px, ${drag.dy}px) scale(1.2)` } : undefined}
       >
         {TREATS[selectedTreat].emoji}
