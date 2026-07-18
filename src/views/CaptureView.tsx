@@ -44,6 +44,7 @@ export default function CaptureView() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<string | null>(null);
   const [showAd, setShowAd] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const snacks = useAppStore((s) => s.snacks);
   const modelsPreloadedRef = useRef(false);
 
@@ -76,7 +77,7 @@ export default function CaptureView() {
     return () => stream?.getTracks().forEach((t) => t.stop());
   }, [activeView]);
 
-  /** The treat landed → snap the frame and run the 2s brew + fast card. */
+  /** Photo accepted (or a demo throw, which skips review) → spend the snack and run the 2s brew + fast card. */
   async function throwCapture(dataUrl: string) {
     if (!spendSnack()) {
       setRejectReason("no_snacks");
@@ -102,9 +103,31 @@ export default function CaptureView() {
     }
   }
 
+  /**
+   * The treat landed → freeze the frame on screen right away instead of
+   * cutting to a dark "brewing" overlay. Users were reading that dark
+   * screen as "already captured" and moving the phone before the actual
+   * photo (which lands here, this instant) was even taken. No snack is
+   * spent yet — just a still to approve or retake for free.
+   */
   function handleTreatThrow() {
+    if (useAppStore.getState().snacks <= 0) {
+      setRejectReason("no_snacks");
+      return;
+    }
     const video = videoRef.current;
-    if (video && video.readyState >= 2) throwCapture(grabFrame(video));
+    if (video && video.readyState >= 2) setPreviewPhoto(grabFrame(video));
+  }
+
+  function acceptPhoto() {
+    if (!previewPhoto) return;
+    const photo = previewPhoto;
+    setPreviewPhoto(null);
+    throwCapture(photo);
+  }
+
+  function retakePhoto() {
+    setPreviewPhoto(null);
   }
 
   async function handleDemoThrow(src: string) {
@@ -144,20 +167,49 @@ export default function CaptureView() {
           onLoadedData={handleCameraReady}
           className="h-full w-full object-cover"
         />
-        {cameraError && (
+        {cameraError && !previewPhoto && (
           <div className="absolute inset-0 flex items-center justify-center p-6 text-center font-bold text-white">
             {cameraError}
           </div>
         )}
-        <div className="pointer-events-none absolute inset-8 rounded-[2rem] border-4 border-dashed border-sunny/80" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs font-bold text-white/80">
-          🎯 Drag the treat onto the pet to meet them!
-        </div>
+        {!previewPhoto && (
+          <>
+            <div className="pointer-events-none absolute inset-8 rounded-[2rem] border-4 border-dashed border-sunny/80" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-xs font-bold text-white/80">
+              🎯 Drag the treat onto the pet to meet them!
+            </div>
+          </>
+        )}
+        {previewPhoto && (
+          <div className="absolute inset-0 flex flex-col">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewPhoto} alt="Captured preview" className="h-full w-full object-cover" />
+            <span className="absolute inset-x-0 top-3 mx-auto w-fit rounded-full bg-ink/70 px-3 py-1 text-xs font-bold text-white">
+              📸 Good shot?
+            </span>
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 bg-gradient-to-t from-ink/85 via-ink/40 to-transparent p-4 pt-14">
+              <button
+                type="button"
+                onClick={retakePhoto}
+                className="tappable rounded-full bg-white px-5 py-3 text-sm font-extrabold text-ink shadow-md"
+              >
+                ↩️ Retake
+              </button>
+              <button
+                type="button"
+                onClick={acceptPhoto}
+                className="tappable rounded-full bg-grass px-5 py-3 text-sm font-extrabold text-white shadow-md"
+              >
+                ✓ Use this photo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <TreatThrower zoneRef={frameRef} onThrow={handleTreatThrow} />
+      {!previewPhoto && <TreatThrower zoneRef={frameRef} onThrow={handleTreatThrow} />}
 
-      {rejectReason === "no_snacks" ? (
+      {!previewPhoto && (rejectReason === "no_snacks" ? (
         <div className="animate-pop-in flex flex-col items-center gap-2.5 rounded-2xl bg-tangerine/20 px-4 py-3 text-center">
           <p className="font-bold text-tangerine-deep">{REJECT_MESSAGES.no_snacks}</p>
           <button
@@ -172,24 +224,26 @@ export default function CaptureView() {
         <p className="animate-pop-in rounded-2xl bg-tangerine/20 px-4 py-3 text-center font-bold text-tangerine-deep">
           {REJECT_MESSAGES[rejectReason]}
         </p>
-      ) : null}
+      ) : null)}
 
-      <section className="rounded-card bg-white p-4 shadow-md">
-        <h2 className="font-extrabold">🧪 Demo throws</h2>
-        <p className="mb-3 text-xs text-ink/50">No pet nearby? Toss a treat at a sample photo.</p>
-        <div className="flex gap-3">
-          {DEMO_PETS.map((pet) => (
-            <button key={pet.src} type="button" onClick={() => handleDemoThrow(pet.src)}
-              className="tappable flex flex-1 flex-col items-center gap-1">
-              <span className="relative block h-14 w-14 overflow-hidden rounded-2xl border-4 border-sunny">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={pet.src} alt={pet.label} className="h-full w-full object-cover" />
-              </span>
-              <span className="text-[10px] font-bold text-ink/60">{pet.emoji} {pet.label}</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      {!previewPhoto && (
+        <section className="rounded-card bg-white p-4 shadow-md">
+          <h2 className="font-extrabold">🧪 Demo throws</h2>
+          <p className="mb-3 text-xs text-ink/50">No pet nearby? Toss a treat at a sample photo.</p>
+          <div className="flex gap-3">
+            {DEMO_PETS.map((pet) => (
+              <button key={pet.src} type="button" onClick={() => handleDemoThrow(pet.src)}
+                className="tappable flex flex-1 flex-col items-center gap-1">
+                <span className="relative block h-14 w-14 overflow-hidden rounded-2xl border-4 border-sunny">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={pet.src} alt={pet.label} className="h-full w-full object-cover" />
+                </span>
+                <span className="text-[10px] font-bold text-ink/60">{pet.emoji} {pet.label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {showAd && (
         <FullScreenAd
